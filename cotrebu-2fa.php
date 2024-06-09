@@ -46,17 +46,5 @@ function cotrebu_2fa_activate() {
 }
 register_activation_hook(__FILE__, 'cotrebu_2fa_activate');
 
-// Función para eliminar la tabla y la clave maestra al desactivar el plugin
-function cotrebu_2fa_deactivate() {
-    if ( get_option('cotrebu_2fa_eliminar_datos') === 'yes' ) {
-        global $wpdb;
-        $tabla = $wpdb->prefix . '2fa_accounts';
-        $sql = "DROP TABLE IF EXISTS $tabla;";
-        $wpdb->query($sql);
 
-        delete_option('cotrebu_2fa_master_key');
-        delete_option('cotrebu_2fa_eliminar_datos');
-    }
-}
-register_deactivation_hook(__FILE__, 'cotrebu_2fa_deactivate');
 ?>
