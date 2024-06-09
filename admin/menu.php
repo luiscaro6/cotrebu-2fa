@@ -26,6 +26,10 @@ function cotrebu_2fa_pagina() {
     if ( isset($_POST['cotrebu_nombre']) && !empty($_POST['cotrebu_nombre']) && isset($_POST['cotrebu_secreto']) && !empty($_POST['cotrebu_secreto']) ) {
         $nombre = sanitize_text_field($_POST['cotrebu_nombre']);
         $secreto = sanitize_text_field($_POST['cotrebu_secreto']);
+        
+        // Encriptar el secreto
+        $secreto_encriptado = cotrebu_2fa_encrypt($secreto);
+
         // Guardar el secreto en la base de datos
         global $wpdb;
         $tabla = $wpdb->prefix . '2fa_accounts';
@@ -33,14 +37,26 @@ function cotrebu_2fa_pagina() {
             $tabla,
             array(
                 'nombre' => $nombre,
-                'secreto' => $secreto,
+                'secreto' => $secreto_encriptado,
             )
         );
         echo '<div class="updated"><p>Secreto guardado correctamente.</p></div>';
     }
+
+    // Procesar el formulario de configuración
+    if ( isset($_POST['cotrebu_eliminar_datos']) ) {
+        update_option('cotrebu_2fa_eliminar_datos', sanitize_text_field($_POST['cotrebu_eliminar_datos']));
+    } else {
+        update_option('cotrebu_2fa_eliminar_datos', 'no');
+    }
+
+    // Obtener los secretos de la base de datos
     global $wpdb;
     $tabla = $wpdb->prefix . '2fa_accounts';
     $secretos = $wpdb->get_results("SELECT * FROM $tabla", ARRAY_A);
+
+    // Obtener la configuración actual
+    $eliminar_datos = get_option('cotrebu_2fa_eliminar_datos', 'no');
     ?>
     <div class="wrap">
         <h1>Cotrebu 2FA</h1>
@@ -60,6 +76,17 @@ function cotrebu_2fa_pagina() {
             <?php submit_button('Guardar Secreto'); ?>
         </form>
 
+        <h2>Configuración del Plugin</h2>
+        <form method="post" action="">
+            <table class="form-table">
+                <tr valign="top">
+                    <th scope="row">Eliminar datos al desactivar el plugin</th>
+                    <td><input type="checkbox" name="cotrebu_eliminar_datos" value="yes" <?php checked($eliminar_datos, 'yes'); ?> /> Sí</td>
+                </tr>
+            </table>
+            <?php submit_button('Guardar Configuración'); ?>
+        </form>
+
         <h2>Secretos Guardados</h2>
         <table class="wp-list-table widefat striped">
             <thead>
@@ -70,16 +97,18 @@ function cotrebu_2fa_pagina() {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($secretos as $secreto) : ?>
+                <?php foreach ($secretos as $secreto) : 
+                    $secreto_desencriptado = cotrebu_2fa_decrypt($secreto['secreto']);
+                ?>
                     <tr>
                         <td><?php echo esc_html($secreto['nombre']); ?></td>
-                        <td><?php echo esc_html($secreto['secreto']); ?></td>
-                        <td><?php echo cotrebu_2fa_generate_code($secreto['secreto']); ?></td>
+                        <td><?php echo esc_html($secreto_desencriptado); ?></td>
+                        <td><?php echo cotrebu_2fa_generate_code($secreto_desencriptado); ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
     </div>
-<?php
+    <?php
 }
 ?>
